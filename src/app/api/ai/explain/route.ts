@@ -2,11 +2,11 @@
 // POST /api/ai/explain
 // ============================================
 
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest, isAuthError } from "@/lib/middleware";
 import { explainSchema } from "@/lib/validations";
 import { explainTopic } from "@/services/ai";
-import { successResponse, errorResponse, serverErrorResponse } from "@/lib/api-response";
+import { successResponse, errorResponse } from "@/lib/api-response";
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,8 +22,11 @@ export async function POST(request: NextRequest) {
 
     const explanation = await explainTopic(parsed.data);
     return successResponse({ explanation });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Explain error:", error);
-    return serverErrorResponse();
+    return NextResponse.json(
+      { success: false, error: "AI explain failed", detail: error?.message || String(error) },
+      { status: 500 }
+    );
   }
 }
