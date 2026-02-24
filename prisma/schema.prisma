@@ -1,0 +1,299 @@
+// EduBridge AI – Prisma Schema
+// Production-grade normalized database design
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ─── ENUMS ──────────────────────────────────────────
+
+enum Role {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+enum Difficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum QuestionType {
+  MCQ
+  TRUE_FALSE
+  SHORT_ANSWER
+}
+
+enum LabStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+// ─── USERS & AUTH ───────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  name          String
+  role          Role      @default(STUDENT)
+  avatarUrl     String?
+  preferredLang String    @default("en")
+  isActive      Boolean   @default(true)
+  deletedAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  studentProfile StudentProfile?
+  teacherNotes   TeacherNote[]
+  quizAttempts   QuizAttempt[]
+  studyPlans     StudyPlan[]
+  labSessions    LabSession[]
+  createdQuizzes Quiz[]          @relation("QuizCreator")
+
+  @@index([role])
+  @@map("users")
+}
+
+// ─── ACADEMIC STRUCTURE ─────────────────────────────
+
+model Subject {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String?
+  iconUrl     String?
+  isActive    Boolean   @default(true)
+  deletedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  topics  Topic[]
+  quizzes Quiz[]
+
+  @@map("subjects")
+}
+
+model Topic {
+  id         String     @id @default(cuid())
+  name       String
+  description String?
+  difficulty Difficulty @default(BEGINNER)
+  orderIndex Int        @default(0)
+  isActive   Boolean    @default(true)
+  deletedAt  DateTime?
+
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  quizQuestions QuizQuestion[]
+  weakTopics    WeakTopic[]
+  labSessions   LabSession[]
+
+  @@unique([subjectId, name])
+  @@index([subjectId])
+  @@map("topics")
+}
+
+// ─── QUIZZES ────────────────────────────────────────
+
+model Quiz {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  difficulty  Difficulty @default(BEGINNER)
+  timeLimit   Int?       // in seconds
+  isPublished Boolean    @default(false)
+  deletedAt   DateTime?
+
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id])
+  creatorId String
+  creator   User    @relation("QuizCreator", fields: [creatorId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  questions QuizQuestion[]
+  attempts  QuizAttempt[]
+
+  @@index([subjectId])
+  @@index([creatorId])
+  @@map("quizzes")
+}
+
+model QuizQuestion {
+  id            String       @id @default(cuid())
+  questionText  String
+  questionType  QuestionType @default(MCQ)
+  options       Json?        // For MCQ: ["A", "B", "C", "D"]
+  correctAnswer String
+  explanation   String?
+  points        Int          @default(1)
+  orderIndex    Int          @default(0)
+
+  quizId  String
+  quiz    Quiz  @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  topicId String?
+  topic   Topic? @relation(fields: [topicId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([quizId])
+  @@index([topicId])
+  @@map("quiz_questions")
+}
+
+model QuizAttempt {
+  id         String   @id @default(cuid())
+  score      Float
+  maxScore   Float
+  percentage Float
+  answers    Json     // { questionId: userAnswer }
+  timeTaken  Int?     // seconds
+  completedAt DateTime?
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quizId String
+  quiz   Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([quizId])
+  @@index([userId, quizId])
+  @@map("quiz_attempts")
+}
+
+// ─── STUDENT PERSONALIZATION ────────────────────────
+
+model StudentProfile {
+  id                  String     @id @default(cuid())
+  learningStyle       String?    // visual, auditory, kinesthetic
+  currentDifficulty   Difficulty @default(BEGINNER)
+  totalQuizzesTaken   Int        @default(0)
+  averageScore        Float      @default(0)
+  streakDays          Int        @default(0)
+  lastActiveAt        DateTime?
+  accessibilityPrefs  Json?      // { highContrast, dyslexiaFont, fontSize }
+  careerInterests     Json?      // ["engineering", "medicine"]
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  weakTopics WeakTopic[]
+
+  @@map("student_profiles")
+}
+
+model WeakTopic {
+  id              String @id @default(cuid())
+  proficiencyScore Float  @default(0) // 0-100
+  attemptCount    Int    @default(0)
+
+  profileId String
+  profile   StudentProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  topicId   String
+  topic     Topic          @relation(fields: [topicId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([profileId, topicId])
+  @@index([profileId])
+  @@map("weak_topics")
+}
+
+model StudyPlan {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  goals       Json      // [{ topic, targetScore, deadline }]
+  schedule    Json      // [{ day, topics, duration }]
+  isActive    Boolean   @default(true)
+  completedAt DateTime?
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("study_plans")
+}
+
+// ─── VIRTUAL LAB ────────────────────────────────────
+
+model LabSession {
+  id              String    @id @default(cuid())
+  experimentTitle String
+  experimentData  Json      // simulation state/results
+  status          LabStatus @default(NOT_STARTED)
+  score           Float?
+  feedback        String?
+  duration        Int?      // seconds
+
+  userId  String
+  user    User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topicId String?
+  topic   Topic? @relation(fields: [topicId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([topicId])
+  @@map("lab_sessions")
+}
+
+// ─── TEACHER ────────────────────────────────────────
+
+model TeacherNote {
+  id        String    @id @default(cuid())
+  title     String
+  content   String
+  isPublic  Boolean   @default(false)
+  deletedAt DateTime?
+
+  teacherId String
+  teacher   User @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([teacherId])
+  @@map("teacher_notes")
+}
+
+// ─── AI CACHE ───────────────────────────────────────
+
+model AiCache {
+  id        String @id @default(cuid())
+  cacheKey  String @unique // hash of prompt+params
+  response  String // cached AI response
+  model     String // which AI model
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+
+  @@index([cacheKey])
+  @@index([expiresAt])
+  @@map("ai_cache")
+}

@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Vercel handles output mode automatically
+  serverExternalPackages: ["@libsql/client"],
 };
 
 export default nextConfig;
