@@ -7,7 +7,6 @@ import bcrypt from "bcryptjs";
 import { Role } from "@prisma/client";
 
 const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret-do-not-use";
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 
 export interface JwtPayload {
   userId: string;
@@ -17,9 +16,10 @@ export interface JwtPayload {
 }
 
 export function signToken(payload: JwtPayload): string {
-  return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN as string,
-  } as jwt.SignOptions);
+  const raw = process.env.JWT_EXPIRES_IN?.trim();
+  // Default to 7 days, ensure it's a valid timespan string
+  const expiresIn: string = raw && raw.length > 0 ? raw : "7d";
+  return jwt.sign(payload, JWT_SECRET, { expiresIn } as jwt.SignOptions);
 }
 
 export function verifyToken(token: string): JwtPayload {
