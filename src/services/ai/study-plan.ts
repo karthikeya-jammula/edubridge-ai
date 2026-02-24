@@ -130,6 +130,7 @@ export async function generateStudyPlan(
     return getDemoStudyPlan(weakTopics, subjectName, durationWeeks);
   }
 
+  try {
   const systemPrompt = `You are an adaptive learning AI that creates personalized study plans.
 Focus on weak areas while reinforcing strengths.
 Create realistic, achievable daily plans.
@@ -172,4 +173,7 @@ Include 7 days in the schedule (one week cycle) and goals for each weak topic.`;
   );
 
   return JSON.parse(response) as MicroStudyPlan;
+  } catch {
+    return getDemoStudyPlan(weakTopics, subjectName, durationWeeks);
+  }
 }

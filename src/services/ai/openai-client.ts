@@ -18,6 +18,11 @@ export interface ChatMessage {
   content: string;
 }
 
+/**
+ * Attempts an OpenAI chat completion.
+ * Throws "DEMO_MODE" when there is no API key, or re-throws
+ * the original OpenAI error so callers can decide to fall back.
+ */
 export async function chatCompletion(
   messages: ChatMessage[],
   options?: {

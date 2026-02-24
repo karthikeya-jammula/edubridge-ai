@@ -95,32 +95,36 @@ export async function translateText(input: TranslateInput): Promise<string> {
     return getDemoTranslation(input);
   }
 
-  const cacheKey = generateCacheKey("translate", input as unknown as Record<string, unknown>);
-  const cached = await getCachedResponse(cacheKey);
-  if (cached) return cached;
+  try {
+    const cacheKey = generateCacheKey("translate", input as unknown as Record<string, unknown>);
+    const cached = await getCachedResponse(cacheKey);
+    if (cached) return cached;
 
-  const targetLang = LANGUAGE_NAMES[input.targetLanguage] || input.targetLanguage;
-  const sourceLang = LANGUAGE_NAMES[input.sourceLanguage || "en"] || "English";
+    const targetLang = LANGUAGE_NAMES[input.targetLanguage] || input.targetLanguage;
+    const sourceLang = LANGUAGE_NAMES[input.sourceLanguage || "en"] || "English";
 
-  const systemPrompt = `You are a professional translator specializing in educational content.
+    const systemPrompt = `You are a professional translator specializing in educational content.
 Translate accurately while maintaining the educational context and meaning.
 Preserve any technical terms with their translations in parentheses.
 Only output the translated text, nothing else.`;
 
-  const userPrompt = `Translate the following text from ${sourceLang} to ${targetLang}:
+    const userPrompt = `Translate the following text from ${sourceLang} to ${targetLang}:
 
 ${input.text}`;
 
-  const response = await chatCompletion(
-    [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-    { temperature: 0.3, maxTokens: 2000 }
-  );
+    const response = await chatCompletion(
+      [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      { temperature: 0.3, maxTokens: 2000 }
+    );
 
-  await setCachedResponse(cacheKey, response, "translate");
-  return response;
+    await setCachedResponse(cacheKey, response, "translate");
+    return response;
+  } catch {
+    return getDemoTranslation(input);
+  }
 }
 
 export function getSupportedLanguages() {

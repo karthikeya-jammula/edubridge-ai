@@ -133,6 +133,7 @@ export async function generateCareerRoadmap(
     return getDemoCareerRoadmap(input);
   }
 
+  try {
   const systemPrompt = `You are a career counselor and education advisor AI.
 Analyze the student's profile and generate a practical, actionable career roadmap.
 Be specific with resources and timelines.
@@ -179,4 +180,7 @@ Provide exactly 3 career paths and 6 months of planning.`;
   );
 
   return JSON.parse(response) as CareerRoadmap;
+  } catch {
+    return getDemoCareerRoadmap(input);
+  }
 }

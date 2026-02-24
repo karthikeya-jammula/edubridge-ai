@@ -196,6 +196,7 @@ export async function generateQuiz(input: GenerateQuizInput): Promise<GeneratedQ
     return getDemoQuiz(input);
   }
 
+  try {
   const systemPrompt = `You are an expert quiz creator for educational platforms.
 Generate high-quality questions that test understanding, not just memorization.
 Always provide clear explanations for correct answers.
@@ -242,4 +243,7 @@ Return JSON with this exact structure:
 
   const parsed: GeneratedQuiz = JSON.parse(response);
   return parsed;
+  } catch {
+    return getDemoQuiz(input);
+  }
 }
