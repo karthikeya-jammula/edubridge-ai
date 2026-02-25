@@ -1,62 +1,84 @@
-# EduBridge AI – Inclusive Adaptive Learning Ecosystem
+# EduBridge AI – Adaptive Learning Platform 🎓
 
-A production-grade, full-stack AI-powered education platform built with Next.js 15, TypeScript, Prisma, and OpenAI.
+> **48-Hour Hackathon MVP** – AI-powered education with OpenAI integration
 
 ---
 
-## Features
-
-| Module | Description |
-|---|---|
-| **AI Explainer** | Topic explanations in multiple difficulty levels with multilingual support |
-| **Smart Quizzes** | AI-generated quizzes with adaptive difficulty |
-| **Virtual Lab** | Interactive physics/chemistry experiments (Canvas-based) |
-| **Career Mapping** | AI-powered career guidance with 6-month roadmaps |
-| **Study Plans** | Personalized study schedules based on weak topics |
-| **Text-to-Speech** | Audio narration via Web Speech API + OpenAI TTS |
-| **Speech-to-Text** | Voice input using OpenAI Whisper |
-| **Translation** | 20+ language support |
-| **Accessibility** | High contrast, dyslexia font, font scaling, screen reader mode |
-| **Teacher Dashboard** | Student analytics, at-risk detection, quiz creation |
-| **Admin Panel** | User management, module configuration, system metrics |
-
-## Tech Stack
-
-- **Frontend:** Next.js 15 (App Router), TypeScript, TailwindCSS, ShadCN-style UI
-- **Backend:** Next.js API Routes, Prisma ORM
-- **Database:** PostgreSQL
-- **AI:** OpenAI GPT-4o-mini, Whisper
-- **Auth:** JWT + bcryptjs (role-based: Student, Teacher, Admin)
-- **Deployment:** Docker + Docker Compose
-
-## Quick Start
-
-### Prerequisites
-
-- Node.js 20+
-- PostgreSQL 15+ (or Docker)
-- OpenAI API key
-
-### 1. Clone & Install
+## ⚡ Quick Start (2 minutes)
 
 ```bash
-git clone <repo-url>
-cd AllAIishere
-npm install
+# 1. Install & Setup
+npm run setup
+
+# 2. Start development server  
+npm run dev
 ```
 
-### 2. Configure Environment
+**That's it!** Open http://localhost:3000
 
-```bash
-cp .env.example .env
-# Edit .env with your values
+### Demo Accounts
+| Role | Email | Password |
+|------|-------|----------|
+| Student | student@demo.com | demo123 |
+| Teacher | teacher@demo.com | demo123 |
+| Admin | admin@demo.com | demo123 |
+
+---
+
+## 🚀 Key Features
+
+| Feature | Innovation |
+|---------|------------|
+| **AI Explainer** | GPT-4o explanations at any difficulty level |
+| **Smart Quizzes** | AI-generated adaptive assessments |
+| **Virtual Lab** | Interactive physics/chemistry simulations |
+| **Career Mapping** | Personalized career roadmaps |
+| **Voice I/O** | Speech-to-text & text-to-speech |
+| **20+ Languages** | Real-time translation |
+| **Accessibility** | Dyslexia fonts, high contrast, screen reader |
+
+## 🛠️ Tech Stack
+
+- **Next.js 16** + TypeScript + TailwindCSS
+- **Prisma** + SQLite (zero config!)
+- **OpenAI** GPT-4o-mini & Whisper
+- **JWT Auth** with role-based access
+
+## 📁 Project Structure
+
+```
+src/
+├── app/           # Pages & API routes
+├── components/    # UI components
+├── services/ai/   # OpenAI integrations
+├── context/       # Auth & accessibility
+└── lib/           # Utils & helpers
 ```
 
-### 3. Setup Database
+## 🔧 Environment Variables
+
+```env
+# Required for AI features (works in demo mode without)
+OPENAI_API_KEY=sk-...
+
+# Optional
+DATABASE_URL=file:./dev.db
+JWT_SECRET=your-secret
+```
+
+## 📝 Scripts
 
 ```bash
-npx prisma migrate dev --name init
-npx prisma generate
+npm run dev       # Start dev server (Turbopack)
+npm run setup     # Full setup (install + db + seed)
+npm run db:reset  # Reset database with demo data
+npm run build     # Production build
+```
+
+## 🐳 Docker (Optional)
+
+```bash
+docker-compose up --build
 ```
 
 ### 4. Run Development Server

@@ -1,29 +1,11 @@
 # ============================================
-# EduBridge AI – Docker Compose
-# Full stack: Next.js + PostgreSQL
+# EduBridge AI – Docker Compose (Hackathon MVP)
+# Simple single-container setup with SQLite
 # ============================================
 
 version: "3.8"
 
 services:
-  db:
-    image: postgres:16-alpine
-    container_name: edubridge-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: edubridge
-      POSTGRES_PASSWORD: edubridge_secret
-      POSTGRES_DB: edubridge
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U edubridge"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   app:
     build:
       context: .
@@ -33,13 +15,9 @@ services:
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: postgresql://edubridge:edubridge_secret@db:5432/edubridge?schema=public
-      JWT_SECRET: change-me-in-production
+      DATABASE_URL: file:./dev.db
+      JWT_SECRET: ${JWT_SECRET:-hackathon-demo-secret}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       NEXT_PUBLIC_APP_URL: http://localhost:3000
-    depends_on:
-      db:
-        condition: service_healthy
-
-volumes:
-  pgdata:
+    volumes:
+      - ./data:/app/data  # Persist SQLite data

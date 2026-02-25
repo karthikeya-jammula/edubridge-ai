@@ -1,5 +1,5 @@
 // EduBridge AI – Prisma Schema
-// Production-grade normalized database design
+// Hackathon MVP – Simplified for speed
 
 generator client {
   provider = "prisma-client-js"
@@ -9,7 +9,7 @@ datasource db {
   provider = "sqlite"
 }
 
-// ─── ENUMS ──────────────────────────────────────────
+// ─── ENUMS (Simplified) ─────────────────────────────
 
 enum Role {
   STUDENT

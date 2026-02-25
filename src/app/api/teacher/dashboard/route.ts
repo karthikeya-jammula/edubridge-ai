@@ -52,16 +52,16 @@ export async function GET(request: NextRequest) {
     const profiles = students
       .map((s: any) => s.studentProfile)
       .filter(Boolean);
-    
+
     const classStats = {
       totalStudents: students.length,
       averageScore:
         profiles.length > 0
           ? Math.round(
-              (profiles.reduce((sum: number, p: any) => sum + (p?.averageScore || 0), 0) /
-                profiles.length) *
-                100
-            ) / 100
+            (profiles.reduce((sum: number, p: any) => sum + (p?.averageScore || 0), 0) /
+              profiles.length) *
+            100
+          ) / 100
           : 0,
       atRiskCount: studentsWithRisk.filter((s: any) => s.riskScore > 60).length,
       activeToday: profiles.filter((p: any) => {
@@ -115,12 +115,37 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    const quizzesCreated = await prisma.quiz.count({ where: { creatorId: auth.userId, deletedAt: null } });
+
     return successResponse({
-      classStats,
-      students: studentsWithRisk,
-      weakTopicClusters,
-      scoreDistribution,
-      recentQuizzes,
+      summary: {
+        totalStudents: classStats.totalStudents,
+        avgClassScore: classStats.averageScore,
+        atRiskStudents: classStats.atRiskCount,
+        quizzesCreated: quizzesCreated,
+      },
+      students: studentsWithRisk.map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        email: s.email,
+        avgScore: s.studentProfile?.averageScore || 0,
+        quizzesTaken: s.studentProfile?.totalQuizzesTaken || 0,
+        riskScore: s.riskScore,
+        weakTopics: s.studentProfile?.weakTopics?.map((wt: any) => wt.topic?.name) || [],
+        lastActive: s.studentProfile?.lastActiveAt?.toISOString() || new Date().toISOString(),
+      })),
+      weakTopicClusters: weakTopicClusters.map((wt: any) => ({
+        topic: wt.topic,
+        count: wt.studentCount,
+        avgScore: wt.averageProficiency,
+      })),
+      recentQuizzes: recentQuizzes.map((q: any) => ({
+        id: q.id,
+        title: q.title,
+        subject: q.subject?.name || "General",
+        attempts: q._count?.attempts || 0,
+        avgScore: 0,
+      })),
     });
   } catch (error) {
     console.error("Teacher dashboard error:", error);

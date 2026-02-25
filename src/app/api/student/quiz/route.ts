@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
       },
       include: {
         subject: { select: { name: true } },
+        questions: true,
         _count: { select: { questions: true } },
       },
       orderBy: { createdAt: "desc" },

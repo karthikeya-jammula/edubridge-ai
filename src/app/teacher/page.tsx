@@ -127,7 +127,7 @@ export default function TeacherPage() {
             <div className="flex items-center gap-2">
               <Users className="h-5 w-5 text-blue-500" />
               <div>
-                <p className="text-2xl font-bold">{data?.summary.totalStudents || 0}</p>
+                <p className="text-2xl font-bold">{data?.summary?.totalStudents || 0}</p>
                 <p className="text-xs text-muted-foreground">Total Students</p>
               </div>
             </div>
@@ -138,7 +138,7 @@ export default function TeacherPage() {
             <div className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-green-500" />
               <div>
-                <p className="text-2xl font-bold">{data?.summary.avgClassScore || 0}%</p>
+                <p className="text-2xl font-bold">{data?.summary?.avgClassScore || 0}%</p>
                 <p className="text-xs text-muted-foreground">Class Average</p>
               </div>
             </div>
@@ -149,7 +149,7 @@ export default function TeacherPage() {
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-red-500" />
               <div>
-                <p className="text-2xl font-bold">{data?.summary.atRiskStudents || 0}</p>
+                <p className="text-2xl font-bold">{data?.summary?.atRiskStudents || 0}</p>
                 <p className="text-xs text-muted-foreground">At-Risk Students</p>
               </div>
             </div>
@@ -160,7 +160,7 @@ export default function TeacherPage() {
             <div className="flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-purple-500" />
               <div>
-                <p className="text-2xl font-bold">{data?.summary.quizzesCreated || 0}</p>
+                <p className="text-2xl font-bold">{data?.summary?.quizzesCreated || 0}</p>
                 <p className="text-xs text-muted-foreground">Quizzes Created</p>
               </div>
             </div>
@@ -323,8 +323,8 @@ export default function TeacherPage() {
                             student.riskScore >= 70
                               ? "destructive"
                               : student.riskScore >= 40
-                              ? "warning"
-                              : "success"
+                                ? "warning"
+                                : "success"
                           }
                           className="text-xs"
                         >
@@ -453,11 +453,10 @@ export default function TeacherPage() {
                           {q.options?.map((opt: string, j: number) => (
                             <div
                               key={j}
-                              className={`text-xs p-2 rounded ${
-                                j === q.correctIndex
+                              className={`text-xs p-2 rounded ${j === q.correctIndex
                                   ? "bg-green-100 dark:bg-green-900/30 font-medium"
                                   : "bg-background"
-                              }`}
+                                }`}
                             >
                               {String.fromCharCode(65 + j)}. {opt}
                             </div>
