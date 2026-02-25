@@ -202,6 +202,63 @@ export default function ExplainPage() {
         </CardContent>
       </Card>
 
+      {/* YouTube Visual Learning Section — shown first */}
+      {explanation && videoId && (
+        <div className="relative group">
+          {/* Glow effect */}
+          <div className="absolute -inset-0.5 bg-gradient-to-r from-primary via-purple-500 to-pink-500 rounded-2xl blur-md opacity-60 group-hover:opacity-100 transition-opacity duration-500 animate-glow" />
+          <Card className="relative rounded-2xl border-0 bg-background overflow-hidden">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Play className="h-5 w-5 text-red-500" />
+                  Visual Learning
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={`https://www.youtube.com/watch?v=${videoId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    Open on YouTube ↗
+                  </a>
+                  <Button
+                    variant={showVideo ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setShowVideo(!showVideo)}
+                    className="gap-2"
+                  >
+                    <Play className="h-4 w-4" />
+                    {showVideo ? "Hide Video" : "▶ Watch Video"}
+                  </Button>
+                </div>
+              </div>
+              <CardDescription>
+                Prefer to learn visually? Watch the top YouTube video on <strong>{topic}</strong>
+              </CardDescription>
+            </CardHeader>
+            {showVideo && (
+              <CardContent className="pt-0">
+                <div className="relative w-full rounded-xl overflow-hidden shadow-2xl" style={{ paddingBottom: "56.25%" }}>
+                  <iframe
+                    className="absolute inset-0 w-full h-full rounded-xl"
+                    src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`}
+                    title={`YouTube video about ${topic}`}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    style={{ border: "none" }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground mt-3 text-center">
+                  Top result from YouTube for your topic
+                </p>
+              </CardContent>
+            )}
+          </Card>
+        </div>
+      )}
+
       {/* Explanation Output */}
       {explanation && (
         <Card>
@@ -279,62 +336,6 @@ export default function ExplainPage() {
             </div>
           </CardContent>
         </Card>
-      )}
-      {/* YouTube Visual Learning Section */}
-      {explanation && videoId && (
-        <div className="relative group">
-          {/* Glow effect */}
-          <div className="absolute -inset-0.5 bg-gradient-to-r from-primary via-purple-500 to-pink-500 rounded-2xl blur-md opacity-60 group-hover:opacity-100 transition-opacity duration-500 animate-glow" />
-          <Card className="relative rounded-2xl border-0 bg-background overflow-hidden">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Play className="h-5 w-5 text-red-500" />
-                  Visual Learning
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                  <a
-                    href={`https://www.youtube.com/watch?v=${videoId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-muted-foreground hover:text-primary transition-colors"
-                  >
-                    Open on YouTube ↗
-                  </a>
-                  <Button
-                    variant={showVideo ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setShowVideo(!showVideo)}
-                    className="gap-2"
-                  >
-                    <Play className="h-4 w-4" />
-                    {showVideo ? "Hide Video" : "▶ Watch Video"}
-                  </Button>
-                </div>
-              </div>
-              <CardDescription>
-                Prefer to learn visually? Watch the top YouTube video on <strong>{topic}</strong>
-              </CardDescription>
-            </CardHeader>
-            {showVideo && (
-              <CardContent className="pt-0">
-                <div className="relative w-full rounded-xl overflow-hidden shadow-2xl" style={{ paddingBottom: "56.25%" }}>
-                  <iframe
-                    className="absolute inset-0 w-full h-full rounded-xl"
-                    src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`}
-                    title={`YouTube video about ${topic}`}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    style={{ border: "none" }}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground mt-3 text-center">
-                  Top result from YouTube for your topic
-                </p>
-              </CardContent>
-            )}
-          </Card>
-        </div>
       )}
     </div>
   );
