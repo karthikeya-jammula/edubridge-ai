@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const auth = authenticateRequest(request);
     if (isAuthError(auth)) return auth;
 
-    const roleError = authorizeRoles(auth, "STUDENT");
+    const roleError = authorizeRoles(auth, "STUDENT", "TEACHER");
     if (roleError) return roleError;
 
     const notifications = await prisma.notification.findMany({
@@ -38,7 +38,7 @@ export async function PUT(request: NextRequest) {
     const auth = authenticateRequest(request);
     if (isAuthError(auth)) return auth;
 
-    const roleError = authorizeRoles(auth, "STUDENT");
+    const roleError = authorizeRoles(auth, "STUDENT", "TEACHER");
     if (roleError) return roleError;
 
     const body = await request.json();

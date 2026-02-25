@@ -41,7 +41,7 @@ interface Notification {
 }
 
 export function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, logout, token } = useAuth();
   const { prefs, setPrefs } = useAccessibility();
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [a11yOpen, setA11yOpen] = React.useState(false);
@@ -51,27 +51,33 @@ export function Navbar() {
 
   // Fetch notifications when panel opens
   React.useEffect(() => {
-    if (notifOpen && user && (user.role === "STUDENT" || user.role === "TEACHER")) {
+    if (notifOpen && user && token && (user.role === "STUDENT" || user.role === "TEACHER")) {
       setLoadingNotifs(true);
-      fetch("/api/student/notifications")
+      fetch("/api/student/notifications", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
-            setNotifications(data.data || []);
+            setNotifications(data.data?.notifications || data.data || []);
           }
         })
         .catch(() => {})
         .finally(() => setLoadingNotifs(false));
     }
-  }, [notifOpen, user]);
+  }, [notifOpen, user, token]);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const markAllRead = async () => {
+    if (!token) return;
     try {
       await fetch("/api/student/notifications", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ markAllRead: true }),
       });
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
