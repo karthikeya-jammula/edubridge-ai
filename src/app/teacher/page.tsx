@@ -23,6 +23,8 @@ import {
   Loader2,
   Plus,
   Search,
+  Send,
+  CheckCircle,
 } from "lucide-react";
 
 interface Student {
@@ -62,6 +64,8 @@ export default function TeacherPage() {
   const [quizCount, setQuizCount] = useState(5);
   const [generatingQuiz, setGeneratingQuiz] = useState(false);
   const [generatedQuiz, setGeneratedQuiz] = useState<any>(null);
+  const [publishingQuiz, setPublishingQuiz] = useState(false);
+  const [publishSuccess, setPublishSuccess] = useState(false);
 
   useEffect(() => {
     loadDashboard();
@@ -86,14 +90,40 @@ export default function TeacherPage() {
         subject: quizSubject,
         topic: quizTopic,
         difficulty: quizDifficulty,
-        count: quizCount,
+        questionCount: quizCount,
+        questionType: "MCQ",
       }),
     });
 
     if (res.success && res.data) {
       setGeneratedQuiz(res.data);
+      setPublishSuccess(false);
     }
     setGeneratingQuiz(false);
+  };
+
+  const handlePublishQuiz = async () => {
+    if (!generatedQuiz?.quiz) return;
+    setPublishingQuiz(true);
+
+    const res = await apiFetch<any>("/api/teacher/quiz", {
+      method: "POST",
+      body: JSON.stringify({
+        title: generatedQuiz.quiz.title,
+        description: generatedQuiz.quiz.description,
+        subject: quizSubject,
+        topic: quizTopic,
+        difficulty: quizDifficulty,
+        questions: generatedQuiz.quiz.questions,
+        publish: true,
+      }),
+    });
+
+    if (res.success) {
+      setPublishSuccess(true);
+      loadDashboard(); // Refresh stats
+    }
+    setPublishingQuiz(false);
   };
 
   if (loading) {
@@ -438,27 +468,45 @@ export default function TeacherPage() {
               {generatedQuiz && (
                 <Card className="mt-4 border-primary/30">
                   <CardHeader>
-                    <CardTitle className="text-lg">Generated Quiz Preview</CardTitle>
-                    <CardDescription>
-                      {quizSubject} – {quizTopic} ({quizDifficulty})
-                    </CardDescription>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-lg">{generatedQuiz.quiz?.title || "Generated Quiz Preview"}</CardTitle>
+                        <CardDescription>
+                          {quizSubject} – {quizTopic} ({quizDifficulty}) • {generatedQuiz.quiz?.questions?.length || 0} questions
+                        </CardDescription>
+                      </div>
+                      {publishSuccess ? (
+                        <Badge variant="success" className="gap-1">
+                          <CheckCircle className="h-3 w-3" /> Published!
+                        </Badge>
+                      ) : (
+                        <Button onClick={handlePublishQuiz} disabled={publishingQuiz} className="gap-2">
+                          {publishingQuiz ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Send className="h-4 w-4" />
+                          )}
+                          {publishingQuiz ? "Publishing..." : "Publish & Notify Students"}
+                        </Button>
+                      )}
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {generatedQuiz.questions?.map((q: any, i: number) => (
+                    {generatedQuiz.quiz?.questions?.map((q: any, i: number) => (
                       <div key={i} className="p-3 rounded-lg bg-muted/50 space-y-2">
                         <p className="font-medium text-sm">
-                          Q{i + 1}. {q.question}
+                          Q{i + 1}. {q.questionText}
                         </p>
                         <div className="grid grid-cols-2 gap-1">
                           {q.options?.map((opt: string, j: number) => (
                             <div
                               key={j}
-                              className={`text-xs p-2 rounded ${j === q.correctIndex
+                              className={`text-xs p-2 rounded ${opt.startsWith(q.correctAnswer)
                                   ? "bg-green-100 dark:bg-green-900/30 font-medium"
                                   : "bg-background"
                                 }`}
                             >
-                              {String.fromCharCode(65 + j)}. {opt}
+                              {opt}
                             </div>
                           ))}
                         </div>

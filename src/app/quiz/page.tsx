@@ -1,5 +1,6 @@
 // ============================================
 // EduBridge AI – Quiz Page
+// Students can generate & take quizzes
 // ============================================
 
 "use client";
@@ -10,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
 import {
   GraduationCap,
   CheckCircle2,
@@ -18,6 +20,8 @@ import {
   Clock,
   ArrowRight,
   RotateCcw,
+  Sparkles,
+  Brain,
 } from "lucide-react";
 
 interface Quiz {
@@ -56,6 +60,12 @@ interface QuizResult {
   }[];
 }
 
+interface GeneratedQuiz {
+  title: string;
+  description: string;
+  questions: QuizQuestion[];
+}
+
 export default function QuizPage() {
   const { apiFetch } = useApi();
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
@@ -66,6 +76,14 @@ export default function QuizPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [startTime, setStartTime] = useState<number>(0);
+
+  // AI Quiz Generation
+  const [showGenerator, setShowGenerator] = useState(false);
+  const [genSubject, setGenSubject] = useState("");
+  const [genTopic, setGenTopic] = useState("");
+  const [genDifficulty, setGenDifficulty] = useState<"BEGINNER" | "INTERMEDIATE" | "ADVANCED">("BEGINNER");
+  const [genCount, setGenCount] = useState(5);
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     loadQuizzes();
@@ -80,8 +98,47 @@ export default function QuizPage() {
     setLoading(false);
   };
 
+  const generateQuiz = async () => {
+    if (!genSubject || !genTopic) return;
+    setGenerating(true);
+
+    const res = await apiFetch<{ quiz: GeneratedQuiz }>("/api/ai/generate-quiz", {
+      method: "POST",
+      body: JSON.stringify({
+        subject: genSubject,
+        topic: genTopic,
+        difficulty: genDifficulty,
+        questionCount: genCount,
+        questionType: "MCQ",
+      }),
+    });
+
+    if (res.success && res.data?.quiz) {
+      // Convert generated quiz to playable format
+      const quiz = res.data.quiz;
+      const playableQuiz: QuizWithQuestions = {
+        id: `gen-${Date.now()}`,
+        title: quiz.title,
+        description: quiz.description,
+        difficulty: genDifficulty,
+        subject: { name: genSubject },
+        _count: { questions: quiz.questions.length },
+        questions: quiz.questions.map((q, i) => ({
+          ...q,
+          id: `q-${i}`,
+        })),
+      };
+      setActiveQuiz(playableQuiz);
+      setCurrentQuestion(0);
+      setAnswers({});
+      setResult(null);
+      setStartTime(Date.now());
+      setShowGenerator(false);
+    }
+    setGenerating(false);
+  };
+
   const startQuiz = (quiz: Quiz) => {
-    // In production, fetch questions from API. Using quiz data for now.
     setActiveQuiz(quiz as QuizWithQuestions);
     setCurrentQuestion(0);
     setAnswers({});
@@ -96,6 +153,31 @@ export default function QuizPage() {
   const submitQuiz = async () => {
     if (!activeQuiz) return;
     setSubmitting(true);
+
+    // For AI-generated quizzes, calculate locally
+    if (activeQuiz.id.startsWith("gen-")) {
+      const results = activeQuiz.questions.map((q) => {
+        const userAnswer = answers[q.id] || null;
+        const correct = userAnswer === q.correctAnswer;
+        return {
+          questionId: q.id,
+          correct,
+          correctAnswer: q.correctAnswer,
+          userAnswer,
+          explanation: q.explanation,
+        };
+      });
+      const score = results.filter((r) => r.correct).length;
+      const maxScore = activeQuiz.questions.length;
+      setResult({
+        score,
+        maxScore,
+        percentage: (score / maxScore) * 100,
+        results,
+      });
+      setSubmitting(false);
+      return;
+    }
 
     const timeTaken = Math.round((Date.now() - startTime) / 1000);
 
@@ -266,13 +348,97 @@ export default function QuizPage() {
   // Quiz list
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <GraduationCap className="h-8 w-8 text-primary" />
-          Quizzes
-        </h1>
-        <p className="text-muted-foreground mt-1">Test your knowledge with adaptive quizzes</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <GraduationCap className="h-8 w-8 text-primary" />
+            Quizzes
+          </h1>
+          <p className="text-muted-foreground mt-1">Test your knowledge with adaptive quizzes</p>
+        </div>
+        <Button onClick={() => setShowGenerator(!showGenerator)} className="gap-2">
+          <Sparkles className="h-4 w-4" />
+          {showGenerator ? "Hide Generator" : "Generate Quiz with AI"}
+        </Button>
       </div>
+
+      {/* AI Quiz Generator */}
+      {showGenerator && (
+        <Card className="border-primary/50 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Brain className="h-5 w-5 text-primary" />
+              AI Quiz Generator
+            </CardTitle>
+            <CardDescription>
+              Enter any topic and let AI create a personalized quiz for you
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Subject</label>
+                <Input
+                  placeholder="e.g., Physics, Mathematics, History"
+                  value={genSubject}
+                  onChange={(e) => setGenSubject(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Topic / Concept</label>
+                <Input
+                  placeholder="e.g., Newton's Laws, Quadratic Equations"
+                  value={genTopic}
+                  onChange={(e) => setGenTopic(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Difficulty</label>
+                <select
+                  className="w-full px-3 py-2 rounded-md border bg-background"
+                  value={genDifficulty}
+                  onChange={(e) => setGenDifficulty(e.target.value as typeof genDifficulty)}
+                >
+                  <option value="BEGINNER">Beginner</option>
+                  <option value="INTERMEDIATE">Intermediate</option>
+                  <option value="ADVANCED">Advanced</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Number of Questions</label>
+                <select
+                  className="w-full px-3 py-2 rounded-md border bg-background"
+                  value={genCount}
+                  onChange={(e) => setGenCount(Number(e.target.value))}
+                >
+                  <option value={3}>3 Questions</option>
+                  <option value={5}>5 Questions</option>
+                  <option value={10}>10 Questions</option>
+                </select>
+              </div>
+            </div>
+            <Button
+              onClick={generateQuiz}
+              disabled={generating || !genSubject || !genTopic}
+              className="w-full gap-2"
+            >
+              {generating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Generating Quiz...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Generate Quiz
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {quizzes.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -298,14 +464,18 @@ export default function QuizPage() {
             </Card>
           ))}
         </div>
-      ) : (
+      ) : !showGenerator ? (
         <Card>
           <CardContent className="py-12 text-center">
             <GraduationCap className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">No quizzes available yet. Check back soon!</p>
+            <p className="text-muted-foreground mb-4">No quizzes available yet.</p>
+            <Button onClick={() => setShowGenerator(true)} className="gap-2">
+              <Sparkles className="h-4 w-4" />
+              Generate Your First Quiz
+            </Button>
           </CardContent>
         </Card>
-      )}
+      ) : null}
     </div>
   );
 }

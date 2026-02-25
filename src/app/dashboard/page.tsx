@@ -24,6 +24,9 @@ import {
   TrendingUp,
   AlertTriangle,
   Loader2,
+  Bell,
+  X,
+  CheckCheck,
 } from "lucide-react";
 
 interface DashboardData {
@@ -46,12 +49,25 @@ interface DashboardData {
   riskScore: number;
 }
 
+interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  isRead: boolean;
+  quizId?: string;
+  createdAt: string;
+}
+
 export default function StudentDashboard() {
   const { user, isLoading: authLoading } = useAuth();
   const { apiFetch } = useApi();
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -65,14 +81,31 @@ export default function StudentDashboard() {
     }
 
     const loadDashboard = async () => {
-      const res = await apiFetch<DashboardData>("/api/student/dashboard");
-      if (res.success && res.data) {
-        setData(res.data);
+      const [dashRes, notifRes] = await Promise.all([
+        apiFetch<DashboardData>("/api/student/dashboard"),
+        apiFetch<{ notifications: Notification[]; unreadCount: number }>("/api/student/notifications"),
+      ]);
+      
+      if (dashRes.success && dashRes.data) {
+        setData(dashRes.data);
+      }
+      if (notifRes.success && notifRes.data) {
+        setNotifications(notifRes.data.notifications);
+        setUnreadCount(notifRes.data.unreadCount);
       }
       setLoading(false);
     };
     loadDashboard();
   }, [user, authLoading, apiFetch, router]);
+
+  const markAllRead = async () => {
+    await apiFetch("/api/student/notifications", {
+      method: "PUT",
+      body: JSON.stringify({ markAllRead: true }),
+    });
+    setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+    setUnreadCount(0);
+  };
 
   if (authLoading || loading) {
     return (
@@ -86,6 +119,76 @@ export default function StudentDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Notifications Banner */}
+      {unreadCount > 0 && !showNotifications && (
+        <Card className="border-primary bg-primary/5 cursor-pointer" onClick={() => setShowNotifications(true)}>
+          <CardContent className="py-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Bell className="h-5 w-5 text-primary" />
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                  {unreadCount}
+                </span>
+              </div>
+              <span className="font-medium">You have {unreadCount} new notification{unreadCount > 1 ? 's' : ''}!</span>
+            </div>
+            <Button size="sm" variant="ghost">View</Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Notifications Panel */}
+      {showNotifications && (
+        <Card className="border-primary">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Bell className="h-5 w-5" /> Notifications
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                {unreadCount > 0 && (
+                  <Button size="sm" variant="ghost" onClick={markAllRead} className="gap-1 text-xs">
+                    <CheckCheck className="h-3 w-3" /> Mark all read
+                  </Button>
+                )}
+                <Button size="sm" variant="ghost" onClick={() => setShowNotifications(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-2 max-h-64 overflow-y-auto">
+            {notifications.length > 0 ? (
+              notifications.map((notif) => (
+                <div
+                  key={notif.id}
+                  className={`p-3 rounded-lg border ${notif.isRead ? 'bg-muted/30' : 'bg-primary/5 border-primary/30'}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className={`text-sm ${!notif.isRead ? 'font-medium' : ''}`}>{notif.title}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{notif.message}</p>
+                    </div>
+                    {notif.quizId && (
+                      <Link href="/quiz">
+                        <Button size="sm" variant="outline" className="text-xs shrink-0">
+                          Take Quiz
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {new Date(notif.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">No notifications yet</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Welcome Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>

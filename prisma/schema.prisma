@@ -58,6 +58,7 @@ model User {
   studyPlans     StudyPlan[]
   labSessions    LabSession[]
   createdQuizzes Quiz[]          @relation("QuizCreator")
+  notifications  Notification[]
 
   @@index([role])
   @@map("users")
@@ -280,6 +281,26 @@ model TeacherNote {
 
   @@index([teacherId])
   @@map("teacher_notes")
+}
+
+// ─── NOTIFICATIONS ──────────────────────────────────
+
+model Notification {
+  id        String   @id @default(cuid())
+  title     String
+  message   String
+  type      String   @default("quiz") // quiz, announcement, etc.
+  isRead    Boolean  @default(false)
+  quizId    String?  // Link to quiz if notification is about a quiz
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
 }
 
 // ─── AI CACHE ───────────────────────────────────────

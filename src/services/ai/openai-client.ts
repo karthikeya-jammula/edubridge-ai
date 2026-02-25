@@ -1,17 +1,24 @@
 // ============================================
-// EduBridge AI – OpenAI Service Wrapper
+// EduBridge AI – AI Service Wrapper (SambaNova)
+// Ultra-fast AI inference with SambaNova Cloud
 // ============================================
 
 import OpenAI from "openai";
 
-export const DEMO_MODE = !process.env.OPENAI_API_KEY;
+// SambaNova Cloud API Configuration
+const API_KEY = process.env.SAMBANOVA_API_KEY || process.env.AI_API_KEY || "01738283-bf0e-4474-9d88-9ed41d6a8cbf";
+const BASE_URL = process.env.AI_BASE_URL || "https://api.sambanova.ai/v1";
+const MODEL = process.env.AI_MODEL || "Meta-Llama-3.1-8B-Instruct"; // Fast & capable
+
+export const DEMO_MODE = !API_KEY || API_KEY === "demo";
 
 let openai: OpenAI | null = null;
 if (!DEMO_MODE) {
-  openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  openai = new OpenAI({ 
+    apiKey: API_KEY,
+    baseURL: BASE_URL,
+  });
 }
-
-const MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -19,9 +26,9 @@ export interface ChatMessage {
 }
 
 /**
- * Attempts an OpenAI chat completion.
- * Throws "DEMO_MODE" when there is no API key, or re-throws
- * the original OpenAI error so callers can decide to fall back.
+ * Attempts an AI chat completion via SambaNova Cloud.
+ * Ultra-fast inference with Llama and other models.
+ * Throws "DEMO_MODE" when there is no API key.
  */
 export async function chatCompletion(
   messages: ChatMessage[],
@@ -49,4 +56,5 @@ export async function chatCompletion(
   return response.choices[0]?.message?.content || "";
 }
 
+export { API_KEY, BASE_URL, MODEL };
 export default openai;

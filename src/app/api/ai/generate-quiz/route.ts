@@ -1,9 +1,10 @@
 // ============================================
 // POST /api/ai/generate-quiz
+// Both teachers and students can generate quizzes
 // ============================================
 
 import { NextRequest } from "next/server";
-import { authenticateRequest, isAuthError, authorizeRoles } from "@/lib/middleware";
+import { authenticateRequest, isAuthError } from "@/lib/middleware";
 import { generateQuizSchema } from "@/lib/validations";
 import { generateQuiz } from "@/services/ai";
 import { successResponse, errorResponse, serverErrorResponse } from "@/lib/api-response";
@@ -13,9 +14,7 @@ export async function POST(request: NextRequest) {
     const auth = authenticateRequest(request);
     if (isAuthError(auth)) return auth;
 
-    const roleError = authorizeRoles(auth, "TEACHER", "ADMIN");
-    if (roleError) return roleError;
-
+    // Allow all authenticated users (STUDENT, TEACHER, ADMIN) to generate quizzes
     const body = await request.json();
     const parsed = generateQuizSchema.safeParse(body);
 

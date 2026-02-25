@@ -56,10 +56,11 @@ export default function ExplainPage() {
     setLoading(true);
     setExplanation("");
     setTranslatedText("");
+    setLanguage("en"); // Reset to English for new explanation
 
     const res = await apiFetch<{ explanation: string }>("/api/ai/explain", {
       method: "POST",
-      body: JSON.stringify({ topic, subject, difficulty, language, simplify }),
+      body: JSON.stringify({ topic, subject, difficulty, language: "en", simplify }),
     });
 
     if (res.success && res.data) {
@@ -141,7 +142,7 @@ export default function ExplainPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="difficulty" className="block text-sm font-medium mb-1">
                   Difficulty
@@ -155,23 +156,6 @@ export default function ExplainPage() {
                   <option value="BEGINNER">Beginner</option>
                   <option value="INTERMEDIATE">Intermediate</option>
                   <option value="ADVANCED">Advanced</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="language" className="block text-sm font-medium mb-1">
-                  Language
-                </label>
-                <select
-                  id="language"
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  {languages.map((lang) => (
-                    <option key={lang.code} value={lang.code}>
-                      {lang.name}
-                    </option>
-                  ))}
                 </select>
               </div>
               <div className="flex items-end">
@@ -230,36 +214,46 @@ export default function ExplainPage() {
 
             {/* Translate Section */}
             <div className="mt-6 pt-4 border-t">
-              <div className="flex items-center gap-2 mb-3">
-                <Globe className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Translate to:</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {languages
-                  .filter((l) => l.code !== language)
-                  .map((lang) => (
-                    <Button
-                      key={lang.code}
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleTranslate(lang.code)}
-                      disabled={translating}
-                    >
-                      {lang.name}
-                    </Button>
-                  ))}
-              </div>
-
-              {translating && (
-                <div className="flex items-center gap-2 mt-4">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">Translating...</span>
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Translate to:</span>
                 </div>
-              )}
+                <select
+                  value={language}
+                  onChange={(e) => {
+                    setLanguage(e.target.value);
+                    if (e.target.value !== "en") {
+                      handleTranslate(e.target.value);
+                    } else {
+                      setTranslatedText("");
+                    }
+                  }}
+                  disabled={translating}
+                  className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                >
+                  <option value="en">English (Original)</option>
+                  {languages
+                    .filter((l) => l.code !== "en")
+                    .map((lang) => (
+                      <option key={lang.code} value={lang.code}>
+                        {lang.name}
+                      </option>
+                    ))}
+                </select>
+                {translating && (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm text-muted-foreground">Translating...</span>
+                  </div>
+                )}
+              </div>
 
               {translatedText && (
                 <div className="mt-4 p-4 rounded-lg bg-muted">
-                  <Badge className="mb-2">Translated</Badge>
+                  <Badge className="mb-2">
+                    {languages.find(l => l.code === language)?.name || "Translated"}
+                  </Badge>
                   <div className="whitespace-pre-wrap text-sm">{translatedText}</div>
                 </div>
               )}

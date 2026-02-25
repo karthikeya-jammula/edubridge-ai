@@ -26,13 +26,57 @@ import {
   FlaskConical,
   BriefcaseBusiness,
   Shield,
+  Bell,
+  CheckCheck,
 } from "lucide-react";
+
+interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  isRead: boolean;
+  createdAt: string;
+  quizId?: string;
+}
 
 export function Navbar() {
   const { user, logout } = useAuth();
   const { prefs, setPrefs } = useAccessibility();
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [a11yOpen, setA11yOpen] = React.useState(false);
+  const [notifOpen, setNotifOpen] = React.useState(false);
+  const [notifications, setNotifications] = React.useState<Notification[]>([]);
+  const [loadingNotifs, setLoadingNotifs] = React.useState(false);
+
+  // Fetch notifications when panel opens
+  React.useEffect(() => {
+    if (notifOpen && user && (user.role === "STUDENT" || user.role === "TEACHER")) {
+      setLoadingNotifs(true);
+      fetch("/api/student/notifications")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success) {
+            setNotifications(data.data || []);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setLoadingNotifs(false));
+    }
+  }, [notifOpen, user]);
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  const markAllRead = async () => {
+    try {
+      await fetch("/api/student/notifications", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ markAllRead: true }),
+      });
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    } catch {}
+  };
 
   const navLinks = React.useMemo(() => {
     if (!user) return [];
@@ -93,11 +137,31 @@ export function Navbar() {
 
         {/* Right Actions */}
         <div className="flex items-center gap-2">
+          {/* Notification Bell */}
+          {user && (user.role === "STUDENT" || user.role === "TEACHER") && (
+            <div className="relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => { setNotifOpen(!notifOpen); setA11yOpen(false); }}
+                aria-label="Notifications"
+                title="Notifications"
+              >
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-red-500 text-[10px] font-bold text-white flex items-center justify-center">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </Button>
+            </div>
+          )}
+
           {/* Accessibility Toggle */}
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setA11yOpen(!a11yOpen)}
+            onClick={() => { setA11yOpen(!a11yOpen); setNotifOpen(false); }}
             aria-label="Accessibility settings"
             title="Accessibility settings"
           >
@@ -135,6 +199,58 @@ export function Navbar() {
           </Button>
         </div>
       </div>
+
+      {/* Notification Panel */}
+      {notifOpen && (
+        <div className="absolute right-4 top-16 w-96 max-h-[420px] overflow-y-auto border rounded-lg bg-background shadow-xl z-[60]" role="region" aria-label="Notifications">
+          <div className="flex items-center justify-between p-3 border-b sticky top-0 bg-background z-10">
+            <h3 className="font-semibold flex items-center gap-2">
+              <Bell className="h-4 w-4" /> Notifications
+            </h3>
+            {unreadCount > 0 && (
+              <Button variant="ghost" size="sm" onClick={markAllRead} className="gap-1 text-xs">
+                <CheckCheck className="h-3.5 w-3.5" /> Mark all read
+              </Button>
+            )}
+          </div>
+          {loadingNotifs ? (
+            <div className="p-6 text-center text-muted-foreground text-sm">Loading...</div>
+          ) : notifications.length === 0 ? (
+            <div className="p-6 text-center text-muted-foreground text-sm">No notifications yet</div>
+          ) : (
+            <div className="divide-y">
+              {notifications.map((n) => (
+                <div
+                  key={n.id}
+                  className={`p-3 text-sm ${n.isRead ? "opacity-60" : "bg-primary/5"}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-medium">{n.title}</p>
+                      <p className="text-muted-foreground text-xs mt-0.5">{n.message}</p>
+                    </div>
+                    {!n.isRead && (
+                      <span className="h-2 w-2 rounded-full bg-primary mt-1.5 shrink-0" />
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-[10px] text-muted-foreground">
+                      {new Date(n.createdAt).toLocaleString()}
+                    </span>
+                    {n.quizId && (
+                      <Link href="/quiz" onClick={() => setNotifOpen(false)}>
+                        <Button variant="outline" size="sm" className="h-6 text-xs px-2">
+                          Take Quiz
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Accessibility Panel */}
       {a11yOpen && (
