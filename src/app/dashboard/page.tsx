@@ -102,13 +102,22 @@ export default function StudentDashboard() {
 
     const fetchNotifs = async () => {
       const authToken = localStorage.getItem("edubridge_token");
-      if (!authToken) return;
+      if (!authToken) {
+        console.log("[Dashboard Notif] No token in localStorage");
+        return;
+      }
       try {
         const res = await fetch("/api/student/notifications", {
           headers: { "Authorization": "Bearer " + authToken },
         });
-        if (!res.ok) return;
+        console.log("[Dashboard Notif] Response status:", res.status);
+        if (!res.ok) {
+          const text = await res.text();
+          console.error("[Dashboard Notif] Error response:", text);
+          return;
+        }
         const json = await res.json();
+        console.log("[Dashboard Notif] Response data:", JSON.stringify(json).slice(0, 300));
         if (json.success && json.data && Array.isArray(json.data.notifications)) {
           setNotifications(json.data.notifications);
           setUnreadCount(
@@ -117,8 +126,8 @@ export default function StudentDashboard() {
               : json.data.notifications.filter((n: Notification) => !n.isRead).length
           );
         }
-      } catch {
-        // Will retry on next poll
+      } catch (err) {
+        console.error("[Dashboard Notif] Fetch error:", err);
       }
     };
 

@@ -53,20 +53,31 @@ export function Navbar() {
   // to avoid stale closure issues with React state
   const loadNotifications = React.useCallback(async (withLoading = false) => {
     const authToken = localStorage.getItem("edubridge_token");
-    if (!authToken) return;
+    if (!authToken) {
+      console.log("[Navbar Notif] No token in localStorage");
+      return;
+    }
     if (withLoading) setLoadingNotifs(true);
     try {
       const res = await fetch("/api/student/notifications", {
         headers: { "Authorization": "Bearer " + authToken },
       });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success && json.data && Array.isArray(json.data.notifications)) {
-          setNotifications(json.data.notifications);
-        }
+      console.log("[Navbar Notif] Response status:", res.status);
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("[Navbar Notif] Error response:", text);
+        if (withLoading) setLoadingNotifs(false);
+        return;
+      }
+      const json = await res.json();
+      console.log("[Navbar Notif] Response data:", JSON.stringify(json).slice(0, 300));
+      if (json.success && json.data && Array.isArray(json.data.notifications)) {
+        setNotifications(json.data.notifications);
+      } else {
+        console.warn("[Navbar Notif] Unexpected format:", Object.keys(json));
       }
     } catch (e) {
-      // Silently fail — will retry on next poll
+      console.error("[Navbar Notif] Fetch error:", e);
     }
     if (withLoading) setLoadingNotifs(false);
   }, []);
@@ -102,6 +113,24 @@ export function Navbar() {
       });
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     } catch {}
+  };
+
+  const createTestNotification = async () => {
+    const authToken = localStorage.getItem("edubridge_token");
+    if (!authToken) return;
+    try {
+      const res = await fetch("/api/student/notifications", {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + authToken },
+      });
+      console.log("[Navbar] Test notification created:", res.status);
+      if (res.ok) {
+        // Reload notifications after creating test
+        await loadNotifications(true);
+      }
+    } catch (e) {
+      console.error("[Navbar] Create test notification error:", e);
+    }
   };
 
   const navLinks = React.useMemo(() => {
@@ -242,7 +271,12 @@ export function Navbar() {
           {loadingNotifs ? (
             <div className="p-6 text-center text-muted-foreground text-sm">Loading...</div>
           ) : notifications.length === 0 ? (
-            <div className="p-6 text-center text-muted-foreground text-sm">No notifications yet</div>
+            <div className="p-6 text-center text-muted-foreground text-sm space-y-3">
+              <p>No notifications yet</p>
+              <Button variant="outline" size="sm" onClick={createTestNotification} className="text-xs">
+                🔔 Send Test Notification
+              </Button>
+            </div>
           ) : (
             <div className="divide-y">
               {notifications.map((n) => (

@@ -1,12 +1,12 @@
 // ============================================
-// GET/PUT /api/student/notifications
-// Get notifications & mark as read
+// GET/PUT/POST /api/student/notifications
+// Get notifications, mark as read, create test notification
 // ============================================
 
 import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { authenticateRequest, isAuthError, authorizeRoles } from "@/lib/middleware";
-import { successResponse, serverErrorResponse } from "@/lib/api-response";
+import { successResponse, errorResponse, serverErrorResponse } from "@/lib/api-response";
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,6 +15,8 @@ export async function GET(request: NextRequest) {
 
     const roleError = authorizeRoles(auth, "STUDENT", "TEACHER");
     if (roleError) return roleError;
+
+    console.log("[Notifications GET] userId:", auth.userId, "role:", auth.role);
 
     const notifications = await prisma.notification.findMany({
       where: { userId: auth.userId },
@@ -26,9 +28,38 @@ export async function GET(request: NextRequest) {
       where: { userId: auth.userId, isRead: false },
     });
 
+    console.log("[Notifications GET] Found:", notifications.length, "unread:", unreadCount);
+
     return successResponse({ notifications, unreadCount });
   } catch (error) {
     console.error("Get notifications error:", error);
+    return serverErrorResponse();
+  }
+}
+
+// POST – Create a test notification for the logged-in user (for debugging)
+export async function POST(request: NextRequest) {
+  try {
+    const auth = authenticateRequest(request);
+    if (isAuthError(auth)) return auth;
+
+    const roleError = authorizeRoles(auth, "STUDENT", "TEACHER");
+    if (roleError) return roleError;
+
+    const notification = await prisma.notification.create({
+      data: {
+        userId: auth.userId,
+        title: "New Quiz Available! 📝",
+        message: "A new quiz has been published. Test your knowledge now!",
+        type: "quiz",
+      },
+    });
+
+    console.log("[Notifications POST] Created test notification:", notification.id, "for user:", auth.userId);
+
+    return successResponse({ notification, message: "Test notification created" });
+  } catch (error) {
+    console.error("Create test notification error:", error);
     return serverErrorResponse();
   }
 }
