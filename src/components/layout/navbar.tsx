@@ -57,20 +57,34 @@ export function Navbar() {
       const res = await fetch("/api/student/notifications", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const data = await res.json();
-      if (data.success) {
-        setNotifications(data.data?.notifications || data.data || []);
+      if (!res.ok) {
+        console.warn("[Notifications] API returned", res.status);
+        if (showLoading) setLoadingNotifs(false);
+        return;
       }
-    } catch {}
-    if (showLoading) setLoadingNotifs(false);
+      const data = await res.json();
+      if (data.success && data.data) {
+        const notifs = Array.isArray(data.data.notifications)
+          ? data.data.notifications
+          : Array.isArray(data.data)
+            ? data.data
+            : [];
+        setNotifications(notifs);
+      }
+    } catch (err) {
+      console.error("[Notifications] fetch error:", err);
+    } finally {
+      if (showLoading) setLoadingNotifs(false);
+    }
   }, [user, token]);
 
-  // Fetch on mount & poll every 10 seconds for live updates
+  // Fetch on mount & poll every 8 seconds for live updates
   React.useEffect(() => {
     if (!user || !token) return;
-    fetchNotifications(false);
-    const interval = setInterval(() => fetchNotifications(false), 10000);
-    return () => clearInterval(interval);
+    // Initial fetch with slight delay to ensure token is ready
+    const timeout = setTimeout(() => fetchNotifications(false), 500);
+    const interval = setInterval(() => fetchNotifications(false), 8000);
+    return () => { clearTimeout(timeout); clearInterval(interval); };
   }, [user, token, fetchNotifications]);
 
   // Also refresh when panel opens

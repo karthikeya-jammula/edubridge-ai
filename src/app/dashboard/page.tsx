@@ -60,7 +60,7 @@ interface Notification {
 }
 
 export default function StudentDashboard() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, token, isLoading: authLoading } = useAuth();
   const { apiFetch } = useApi();
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
@@ -69,6 +69,7 @@ export default function StudentDashboard() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
 
+  // Load dashboard data (once)
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
@@ -81,30 +82,62 @@ export default function StudentDashboard() {
     }
 
     const loadDashboard = async () => {
-      const [dashRes, notifRes] = await Promise.all([
-        apiFetch<DashboardData>("/api/student/dashboard"),
-        apiFetch<{ notifications: Notification[]; unreadCount: number }>("/api/student/notifications"),
-      ]);
-      
-      if (dashRes.success && dashRes.data) {
-        setData(dashRes.data);
-      }
-      if (notifRes.success && notifRes.data) {
-        setNotifications(notifRes.data.notifications);
-        setUnreadCount(notifRes.data.unreadCount);
+      try {
+        const dashRes = await apiFetch<DashboardData>("/api/student/dashboard");
+        if (dashRes.success && dashRes.data) {
+          setData(dashRes.data);
+        }
+      } catch (err) {
+        console.error("[Dashboard] load error:", err);
       }
       setLoading(false);
     };
     loadDashboard();
-  }, [user, authLoading, apiFetch, router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, authLoading]);
+
+  // Fetch notifications separately with polling
+  useEffect(() => {
+    if (authLoading || !user || !token || user.role !== "STUDENT") return;
+
+    const fetchNotifs = async () => {
+      try {
+        const res = await fetch("/api/student/notifications", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.success && data.data) {
+          const notifs = Array.isArray(data.data.notifications) ? data.data.notifications : [];
+          setNotifications(notifs);
+          setUnreadCount(typeof data.data.unreadCount === "number" ? data.data.unreadCount : notifs.filter((n: Notification) => !n.isRead).length);
+        }
+      } catch (err) {
+        console.error("[Dashboard Notifications] error:", err);
+      }
+    };
+
+    // Initial fetch + poll every 8 seconds
+    fetchNotifs();
+    const interval = setInterval(fetchNotifs, 8000);
+    return () => clearInterval(interval);
+  }, [user, token, authLoading]);
 
   const markAllRead = async () => {
-    await apiFetch("/api/student/notifications", {
-      method: "PUT",
-      body: JSON.stringify({ markAllRead: true }),
-    });
-    setNotifications(notifications.map(n => ({ ...n, isRead: true })));
-    setUnreadCount(0);
+    try {
+      await fetch("/api/student/notifications", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ markAllRead: true }),
+      });
+      setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+    } catch (err) {
+      console.error("[Dashboard] markAllRead error:", err);
+    }
   };
 
   if (authLoading || loading) {
