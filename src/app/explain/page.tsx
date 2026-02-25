@@ -49,7 +49,8 @@ export default function ExplainPage() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [translatedText, setTranslatedText] = useState("");
   const [translating, setTranslating] = useState(false);
-  const [videoQuery, setVideoQuery] = useState("");
+  const [videoId, setVideoId] = useState("");
+  const [videoLoading, setVideoLoading] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
 
   const handleExplain = async (e: React.FormEvent) => {
@@ -61,15 +62,25 @@ export default function ExplainPage() {
     setTranslatedText("");
     setLanguage("en");
     setShowVideo(false);
+    setVideoId("");
 
-    // Build a YouTube search query from topic + subject
-    const q = [topic.trim(), subject?.trim()].filter(Boolean).join(" ") + " explained";
-    setVideoQuery(q);
+    // Fetch explanation and YouTube video in parallel
+    const searchQuery = [topic.trim(), subject?.trim()].filter(Boolean).join(" ") + " explained";
 
-    const res = await apiFetch<{ explanation: string }>("/api/ai/explain", {
-      method: "POST",
-      body: JSON.stringify({ topic, subject, difficulty, language: "en", simplify }),
-    });
+    const [res, videoRes] = await Promise.all([
+      apiFetch<{ explanation: string }>("/api/ai/explain", {
+        method: "POST",
+        body: JSON.stringify({ topic, subject, difficulty, language: "en", simplify }),
+      }),
+      fetch(`/api/ai/youtube-search?q=${encodeURIComponent(searchQuery)}`)
+        .then(r => r.json())
+        .catch(() => null),
+    ]);
+
+    // Set video
+    if (videoRes?.success && videoRes?.data?.videoId) {
+      setVideoId(videoRes.data.videoId);
+    }
 
     if (res.success && res.data) {
       setExplanation(res.data.explanation);
@@ -270,7 +281,7 @@ export default function ExplainPage() {
         </Card>
       )}
       {/* YouTube Visual Learning Section */}
-      {explanation && videoQuery && (
+      {explanation && videoId && (
         <div className="relative group">
           {/* Glow effect */}
           <div className="absolute -inset-0.5 bg-gradient-to-r from-primary via-purple-500 to-pink-500 rounded-2xl blur-md opacity-60 group-hover:opacity-100 transition-opacity duration-500 animate-glow" />
@@ -281,18 +292,28 @@ export default function ExplainPage() {
                   <Play className="h-5 w-5 text-red-500" />
                   Visual Learning
                 </CardTitle>
-                <Button
-                  variant={showVideo ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setShowVideo(!showVideo)}
-                  className="gap-2"
-                >
-                  <Play className="h-4 w-4" />
-                  {showVideo ? "Hide Video" : "Watch Video"}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={`https://www.youtube.com/watch?v=${videoId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    Open on YouTube ↗
+                  </a>
+                  <Button
+                    variant={showVideo ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setShowVideo(!showVideo)}
+                    className="gap-2"
+                  >
+                    <Play className="h-4 w-4" />
+                    {showVideo ? "Hide Video" : "▶ Watch Video"}
+                  </Button>
+                </div>
               </div>
               <CardDescription>
-                Prefer to learn visually? Watch a relevant YouTube video on <strong>{topic}</strong>
+                Prefer to learn visually? Watch the top YouTube video on <strong>{topic}</strong>
               </CardDescription>
             </CardHeader>
             {showVideo && (
@@ -300,7 +321,7 @@ export default function ExplainPage() {
                 <div className="relative w-full rounded-xl overflow-hidden shadow-2xl" style={{ paddingBottom: "56.25%" }}>
                   <iframe
                     className="absolute inset-0 w-full h-full rounded-xl"
-                    src={`https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(videoQuery)}`}
+                    src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`}
                     title={`YouTube video about ${topic}`}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
@@ -308,7 +329,7 @@ export default function ExplainPage() {
                   />
                 </div>
                 <p className="text-xs text-muted-foreground mt-3 text-center">
-                  Video sourced from YouTube based on your topic search
+                  Top result from YouTube for your topic
                 </p>
               </CardContent>
             )}
