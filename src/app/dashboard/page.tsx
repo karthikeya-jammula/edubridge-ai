@@ -166,26 +166,8 @@ export default function StudentDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Notifications Banner */}
-      {unreadCount > 0 && !showNotifications && (
-        <Card className="border-primary bg-primary/5 cursor-pointer" onClick={() => setShowNotifications(true)}>
-          <CardContent className="py-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Bell className="h-5 w-5 text-primary" />
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                  {unreadCount}
-                </span>
-              </div>
-              <span className="font-medium">You have {unreadCount} new notification{unreadCount > 1 ? 's' : ''}!</span>
-            </div>
-            <Button size="sm" variant="ghost">View</Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Notifications Panel */}
-      {showNotifications && (
+      {/* Notifications Panel — auto-shown when unread notifications exist */}
+      {(showNotifications || unreadCount > 0) && (
         <Card className="border-primary">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">

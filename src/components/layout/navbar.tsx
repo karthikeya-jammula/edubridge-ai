@@ -112,25 +112,7 @@ export function Navbar() {
         body: JSON.stringify({ markAllRead: true }),
       });
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    } catch {}
-  };
-
-  const createTestNotification = async () => {
-    const authToken = localStorage.getItem("edubridge_token");
-    if (!authToken) return;
-    try {
-      const res = await fetch("/api/student/notifications", {
-        method: "POST",
-        headers: { "Authorization": "Bearer " + authToken },
-      });
-      console.log("[Navbar] Test notification created:", res.status);
-      if (res.ok) {
-        // Reload notifications after creating test
-        await loadNotifications(true);
-      }
-    } catch (e) {
-      console.error("[Navbar] Create test notification error:", e);
-    }
+    } catch {};
   };
 
   const navLinks = React.useMemo(() => {
@@ -271,11 +253,8 @@ export function Navbar() {
           {loadingNotifs ? (
             <div className="p-6 text-center text-muted-foreground text-sm">Loading...</div>
           ) : notifications.length === 0 ? (
-            <div className="p-6 text-center text-muted-foreground text-sm space-y-3">
+            <div className="p-6 text-center text-muted-foreground text-sm">
               <p>No notifications yet</p>
-              <Button variant="outline" size="sm" onClick={createTestNotification} className="text-xs">
-                🔔 Send Test Notification
-              </Button>
             </div>
           ) : (
             <div className="divide-y">

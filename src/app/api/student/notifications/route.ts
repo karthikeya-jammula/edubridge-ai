@@ -18,11 +18,50 @@ export async function GET(request: NextRequest) {
 
     console.log("[Notifications GET] userId:", auth.userId, "role:", auth.role);
 
-    const notifications = await prisma.notification.findMany({
+    let notifications = await prisma.notification.findMany({
       where: { userId: auth.userId },
       orderBy: { createdAt: "desc" },
       take: 20,
     });
+
+    // Auto-create a welcome notification for students with zero notifications
+    if (notifications.length === 0 && auth.role === "STUDENT") {
+      const welcome = await prisma.notification.create({
+        data: {
+          userId: auth.userId,
+          title: "Welcome to EduBridge AI! 🎓",
+          message: "Start your learning journey! Head to Quizzes to test your knowledge, or try the AI Explainer to learn any topic.",
+          type: "announcement",
+        },
+      });
+
+      // Also check if there are any published quizzes to notify about
+      const publishedQuizzes = await prisma.quiz.findMany({
+        where: { isPublished: true, deletedAt: null },
+        take: 3,
+        orderBy: { createdAt: "desc" },
+        include: { subject: { select: { name: true } }, creator: { select: { name: true } } },
+      });
+
+      for (const quiz of publishedQuizzes) {
+        await prisma.notification.create({
+          data: {
+            userId: auth.userId,
+            title: "New Quiz Available! 📝",
+            message: `${quiz.creator?.name || "Teacher"} published \"${quiz.title}\" in ${quiz.subject?.name || "General"}. Take it now!`,
+            type: "quiz",
+            quizId: quiz.id,
+          },
+        });
+      }
+
+      // Re-fetch after creating
+      notifications = await prisma.notification.findMany({
+        where: { userId: auth.userId },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+      });
+    }
 
     const unreadCount = await prisma.notification.count({
       where: { userId: auth.userId, isRead: false },
