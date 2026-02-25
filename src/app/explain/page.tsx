@@ -19,6 +19,7 @@ import {
   VolumeX,
   Sparkles,
   Baby,
+  Play,
 } from "lucide-react";
 
 const languages = [
@@ -48,6 +49,8 @@ export default function ExplainPage() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [translatedText, setTranslatedText] = useState("");
   const [translating, setTranslating] = useState(false);
+  const [videoQuery, setVideoQuery] = useState("");
+  const [showVideo, setShowVideo] = useState(false);
 
   const handleExplain = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,7 +59,12 @@ export default function ExplainPage() {
     setLoading(true);
     setExplanation("");
     setTranslatedText("");
-    setLanguage("en"); // Reset to English for new explanation
+    setLanguage("en");
+    setShowVideo(false);
+
+    // Build a YouTube search query from topic + subject
+    const q = [topic.trim(), subject?.trim()].filter(Boolean).join(" ") + " explained";
+    setVideoQuery(q);
 
     const res = await apiFetch<{ explanation: string }>("/api/ai/explain", {
       method: "POST",
@@ -260,6 +268,52 @@ export default function ExplainPage() {
             </div>
           </CardContent>
         </Card>
+      )}
+      {/* YouTube Visual Learning Section */}
+      {explanation && videoQuery && (
+        <div className="relative group">
+          {/* Glow effect */}
+          <div className="absolute -inset-0.5 bg-gradient-to-r from-primary via-purple-500 to-pink-500 rounded-2xl blur-md opacity-60 group-hover:opacity-100 transition-opacity duration-500 animate-glow" />
+          <Card className="relative rounded-2xl border-0 bg-background overflow-hidden">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Play className="h-5 w-5 text-red-500" />
+                  Visual Learning
+                </CardTitle>
+                <Button
+                  variant={showVideo ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowVideo(!showVideo)}
+                  className="gap-2"
+                >
+                  <Play className="h-4 w-4" />
+                  {showVideo ? "Hide Video" : "Watch Video"}
+                </Button>
+              </div>
+              <CardDescription>
+                Prefer to learn visually? Watch a relevant YouTube video on <strong>{topic}</strong>
+              </CardDescription>
+            </CardHeader>
+            {showVideo && (
+              <CardContent className="pt-0">
+                <div className="relative w-full rounded-xl overflow-hidden shadow-2xl" style={{ paddingBottom: "56.25%" }}>
+                  <iframe
+                    className="absolute inset-0 w-full h-full rounded-xl"
+                    src={`https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(videoQuery)}`}
+                    title={`YouTube video about ${topic}`}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    style={{ border: "none" }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground mt-3 text-center">
+                  Video sourced from YouTube based on your topic search
+                </p>
+              </CardContent>
+            )}
+          </Card>
+        </div>
       )}
     </div>
   );
