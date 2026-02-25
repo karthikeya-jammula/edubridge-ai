@@ -49,23 +49,34 @@ export function Navbar() {
   const [notifications, setNotifications] = React.useState<Notification[]>([]);
   const [loadingNotifs, setLoadingNotifs] = React.useState(false);
 
-  // Fetch notifications when panel opens
-  React.useEffect(() => {
-    if (notifOpen && user && token && (user.role === "STUDENT" || user.role === "TEACHER")) {
-      setLoadingNotifs(true);
-      fetch("/api/student/notifications", {
+  // Fetch notifications helper
+  const fetchNotifications = React.useCallback(async (showLoading = false) => {
+    if (!user || !token || (user.role !== "STUDENT" && user.role !== "TEACHER")) return;
+    if (showLoading) setLoadingNotifs(true);
+    try {
+      const res = await fetch("/api/student/notifications", {
         headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.success) {
-            setNotifications(data.data?.notifications || data.data || []);
-          }
-        })
-        .catch(() => {})
-        .finally(() => setLoadingNotifs(false));
-    }
-  }, [notifOpen, user, token]);
+      });
+      const data = await res.json();
+      if (data.success) {
+        setNotifications(data.data?.notifications || data.data || []);
+      }
+    } catch {}
+    if (showLoading) setLoadingNotifs(false);
+  }, [user, token]);
+
+  // Fetch on mount & poll every 10 seconds for live updates
+  React.useEffect(() => {
+    if (!user || !token) return;
+    fetchNotifications(false);
+    const interval = setInterval(() => fetchNotifications(false), 10000);
+    return () => clearInterval(interval);
+  }, [user, token, fetchNotifications]);
+
+  // Also refresh when panel opens
+  React.useEffect(() => {
+    if (notifOpen) fetchNotifications(true);
+  }, [notifOpen, fetchNotifications]);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
@@ -83,6 +94,12 @@ export function Navbar() {
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     } catch {}
   };
+
+  // Expose refresh for external use (e.g. after publishing a quiz)
+  React.useEffect(() => {
+    (window as any).__refreshNotifications = () => fetchNotifications(false);
+    return () => { delete (window as any).__refreshNotifications; };
+  }, [fetchNotifications]);
 
   const navLinks = React.useMemo(() => {
     if (!user) return [];
