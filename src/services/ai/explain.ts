@@ -98,8 +98,9 @@ Provide:
 
     await setCachedResponse(cacheKey, response, "explain");
     return response;
-  } catch {
-    // Fallback to demo if OpenAI call fails (quota exceeded, network, etc.)
+  } catch (error) {
+    console.error("[ExplainTopic] AI call failed:", error);
+    // Fallback to demo if AI call fails (quota exceeded, network, etc.)
     return getDemoExplanation(input);
   }
 }
