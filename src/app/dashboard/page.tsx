@@ -60,7 +60,7 @@ interface Notification {
 }
 
 export default function StudentDashboard() {
-  const { user, token, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { apiFetch } = useApi();
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
@@ -96,48 +96,53 @@ export default function StudentDashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, authLoading]);
 
-  // Fetch notifications separately with polling
+  // Fetch notifications using token from localStorage (avoids stale closure)
   useEffect(() => {
-    if (authLoading || !user || !token || user.role !== "STUDENT") return;
+    if (authLoading || !user || user.role !== "STUDENT") return;
 
     const fetchNotifs = async () => {
+      const authToken = localStorage.getItem("edubridge_token");
+      if (!authToken) return;
       try {
         const res = await fetch("/api/student/notifications", {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { "Authorization": "Bearer " + authToken },
         });
         if (!res.ok) return;
-        const data = await res.json();
-        if (data.success && data.data) {
-          const notifs = Array.isArray(data.data.notifications) ? data.data.notifications : [];
-          setNotifications(notifs);
-          setUnreadCount(typeof data.data.unreadCount === "number" ? data.data.unreadCount : notifs.filter((n: Notification) => !n.isRead).length);
+        const json = await res.json();
+        if (json.success && json.data && Array.isArray(json.data.notifications)) {
+          setNotifications(json.data.notifications);
+          setUnreadCount(
+            typeof json.data.unreadCount === "number"
+              ? json.data.unreadCount
+              : json.data.notifications.filter((n: Notification) => !n.isRead).length
+          );
         }
-      } catch (err) {
-        console.error("[Dashboard Notifications] error:", err);
+      } catch {
+        // Will retry on next poll
       }
     };
 
-    // Initial fetch + poll every 8 seconds
+    // Immediate + poll every 5s
     fetchNotifs();
-    const interval = setInterval(fetchNotifs, 8000);
-    return () => clearInterval(interval);
-  }, [user, token, authLoading]);
+    const id = setInterval(fetchNotifs, 5000);
+    return () => clearInterval(id);
+  }, [user, authLoading]);
 
   const markAllRead = async () => {
+    const authToken = localStorage.getItem("edubridge_token");
+    if (!authToken) return;
     try {
       await fetch("/api/student/notifications", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          "Authorization": "Bearer " + authToken,
         },
         body: JSON.stringify({ markAllRead: true }),
       });
       setNotifications(notifications.map(n => ({ ...n, isRead: true })));
       setUnreadCount(0);
-    } catch (err) {
-      console.error("[Dashboard] markAllRead error:", err);
-    }
+    } catch {}
   };
 
   if (authLoading || loading) {

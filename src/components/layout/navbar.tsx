@@ -41,7 +41,7 @@ interface Notification {
 }
 
 export function Navbar() {
-  const { user, logout, token } = useAuth();
+  const { user, logout } = useAuth();
   const { prefs, setPrefs } = useAccessibility();
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [a11yOpen, setA11yOpen] = React.useState(false);
@@ -49,71 +49,60 @@ export function Navbar() {
   const [notifications, setNotifications] = React.useState<Notification[]>([]);
   const [loadingNotifs, setLoadingNotifs] = React.useState(false);
 
-  // Fetch notifications helper
-  const fetchNotifications = React.useCallback(async (showLoading = false) => {
-    if (!user || !token || (user.role !== "STUDENT" && user.role !== "TEACHER")) return;
-    if (showLoading) setLoadingNotifs(true);
+  // Simple notification fetcher — reads token from localStorage directly
+  // to avoid stale closure issues with React state
+  const loadNotifications = React.useCallback(async (withLoading = false) => {
+    const authToken = localStorage.getItem("edubridge_token");
+    if (!authToken) return;
+    if (withLoading) setLoadingNotifs(true);
     try {
       const res = await fetch("/api/student/notifications", {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { "Authorization": "Bearer " + authToken },
       });
-      if (!res.ok) {
-        console.warn("[Notifications] API returned", res.status);
-        if (showLoading) setLoadingNotifs(false);
-        return;
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data && Array.isArray(json.data.notifications)) {
+          setNotifications(json.data.notifications);
+        }
       }
-      const data = await res.json();
-      if (data.success && data.data) {
-        const notifs = Array.isArray(data.data.notifications)
-          ? data.data.notifications
-          : Array.isArray(data.data)
-            ? data.data
-            : [];
-        setNotifications(notifs);
-      }
-    } catch (err) {
-      console.error("[Notifications] fetch error:", err);
-    } finally {
-      if (showLoading) setLoadingNotifs(false);
+    } catch (e) {
+      // Silently fail — will retry on next poll
     }
-  }, [user, token]);
+    if (withLoading) setLoadingNotifs(false);
+  }, []);
 
-  // Fetch on mount & poll every 8 seconds for live updates
+  // Poll notifications every 5 seconds when user is logged in
   React.useEffect(() => {
-    if (!user || !token) return;
-    // Initial fetch with slight delay to ensure token is ready
-    const timeout = setTimeout(() => fetchNotifications(false), 500);
-    const interval = setInterval(() => fetchNotifications(false), 8000);
-    return () => { clearTimeout(timeout); clearInterval(interval); };
-  }, [user, token, fetchNotifications]);
+    if (!user || (user.role !== "STUDENT" && user.role !== "TEACHER")) return;
+    // Immediate fetch
+    loadNotifications(false);
+    // Then poll
+    const id = setInterval(() => loadNotifications(false), 5000);
+    return () => clearInterval(id);
+  }, [user, loadNotifications]);
 
-  // Also refresh when panel opens
+  // Also reload when dropdown opens
   React.useEffect(() => {
-    if (notifOpen) fetchNotifications(true);
-  }, [notifOpen, fetchNotifications]);
+    if (notifOpen && user) loadNotifications(true);
+  }, [notifOpen, user, loadNotifications]);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const markAllRead = async () => {
-    if (!token) return;
+    const authToken = localStorage.getItem("edubridge_token");
+    if (!authToken) return;
     try {
       await fetch("/api/student/notifications", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          "Authorization": "Bearer " + authToken,
         },
         body: JSON.stringify({ markAllRead: true }),
       });
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     } catch {}
   };
-
-  // Expose refresh for external use (e.g. after publishing a quiz)
-  React.useEffect(() => {
-    (window as any).__refreshNotifications = () => fetchNotifications(false);
-    return () => { delete (window as any).__refreshNotifications; };
-  }, [fetchNotifications]);
 
   const navLinks = React.useMemo(() => {
     if (!user) return [];
